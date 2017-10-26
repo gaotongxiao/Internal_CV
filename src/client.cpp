@@ -7,13 +7,16 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <errno.h>
+#include <signal.h>
 using namespace std;
 
 class Client
 {
   public:
-    Client(const string &ip, const int &port);
+	Client();
     ~Client();
+    bool config(const string &ip, const int &port);
     bool c();
     bool sendAns(int i);
 
@@ -22,28 +25,32 @@ class Client
     bool connected;
     sockaddr_in serv_addr;
     char str[256];
-    int replyLen;
-    fd_set read_flags, write_flags;
-    timeval waitd;
 };
 
-Client::Client(const string &ip, const int &port) : connected(false)
+Client::Client()
 {
     sock = socket(AF_INET, SOCK_STREAM, 0);
-    int x = fcntl(sock, F_GETFL, 0);
-    fcntl(sock, F_SETFL, x | O_NONBLOCK);
+	connected = false;
+}
+
+bool Client::config(const string& ip, const int& port)
+{
     memset(&serv_addr, 0, sizeof(serv_addr));  
     serv_addr.sin_family = AF_INET;  
-    serv_addr.sin_addr.s_addr = inet_addr(ip.c_str());  
+    //serv_addr.sin_addr.s_addr = inet_addr(ip.c_str());  
+	if (inet_pton(AF_INET, ip.c_str(), &serv_addr.sin_addr) <= 0)
+		return false;
     serv_addr.sin_port = htons(port);  
-    waitd.tv_sec = 0;
-    waitd.tv_usec = 100;
-    c();
+	return true;
 }
 
 bool Client::c()
 {
-    connect(sock, (sockaddr*)&serv_addr, sizeof(serv_addr));
+    if (connect(sock, (sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
+	{
+		cerr << errno <<" connect error.\n";
+		return false;
+	}
     connected = true;
     return true;
 }
@@ -56,19 +63,14 @@ bool Client::sendAns(int i)
         cerr << "Invalid input! Please check you code." << endl;
         return false;
     }
-    int stat;
-    FD_ZERO(&read_flags);
-    FD_SET(sock, &write_flags);
-    for (int j = 0; j < 5; j++)
-    {
-        stat = select(sock, &read_flags, &write_flags, (fd_set*)0, &waitd);
-        if (stat >= 0)
-            break;
-    }
-    if (stat < 0) return false;
     str[0] = i + '0';
     str[1] = '\0';
-    write(sock, str, strlen(str));
+    if (send(sock, str, strlen(str) * sizeof(char), 0) < 0)
+    {
+        cerr << "Sending error" << endl;
+		connected = false;
+        return false;
+    }
     return true;
 }
 
@@ -77,14 +79,35 @@ Client::~Client()
     close(sock);
 }
 
-int main(){
-    Client test("127.0.0.1", 4331);
-    /*
+
+Client test;
+
+void exit_handler(int a)
+{
+	test.~Client();
+	exit(1);
+}
+
+int main(int argc, char* argv[]){
+	signal(SIGINT, exit_handler);
+	if (argc != 3)
+	{
+		cerr << "Please enter ip and port number.\n";
+		exit(1);
+	}
+	if (test.config(argv[1], atoi(argv[2])) == false)
+	{
+		cerr << "Invalid ip or port number\n";
+		exit(1);
+	}
+	while (!test.c())sleep(1);
+	cout << "connect success\n";
     int a;
-    cin >> a;
-    test.sendAns(a);
-    */
-
-
+	while(1)
+	{
+		cin >> a;
+		if (a == -1) break;
+		cout << test.sendAns(a) << endl;
+	}
     return 0;
 }
