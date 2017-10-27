@@ -135,6 +135,8 @@ int main(int argc, char **argv)
                                         SDL_WINDOW_FULLSCREEN_DESKTOP);
 
   SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, 0);
+
+  // initialize digits
   SDL_Surface * image[10];
   SDL_Texture * texture[10];
   int digit_width = DM.h / 130 * 86;
@@ -147,50 +149,92 @@ int main(int argc, char **argv)
     t += ".bmp";
     image[i] = SDL_LoadBMP(t.c_str());
     texture[i] = SDL_CreateTextureFromSurface(renderer, image[i]);
+
   }
+
+  // initialize indicator
+  SDL_Surface * indicator = SDL_LoadBMP("dig/indicator.bmp");
+  SDL_Texture * ind_texture = SDL_CreateTextureFromSurface(renderer, indicator);
+  float block_dist = DM.h / 5.0;
+  float ind_h = block_dist * 2.0 / 3.0;
+  float ind_w = (DM.w - digit_width) / 3.0;
+  float ind_x_offset = ((DM.w - digit_width) / 2.0 - ind_w) / 2.0;
+  float ind_y_offset = block_dist / 6.0;
+  SDL_Rect ind_location[10];
+  for (int i = 0; i < 5; i++)
+  {
+    ind_location[2 * i] = {ind_x_offset, DM.h - ind_y_offset / 2.0 - ind_h - i * block_dist, ind_w, ind_h};
+    ind_location[2 * i + 1] = {DM.w - ind_x_offset - ind_w, DM.h - ind_y_offset / 2.0 - ind_h - i * block_dist, ind_w, ind_h};
+  }
+
+  // initalize screen blocker
+  SDL_Rect blocker = {0, 0, DM.w, DM.h};
+
 
   int curDigit, lastDigit = -1;
   curDigit = rand() % 10;
-  SDL_RenderCopy(renderer, texture[curDigit], NULL, &dstrect);
+  SDL_RenderDrawRect(renderer, &blocker);
   SDL_RenderPresent(renderer);
   lastDigit = curDigit;
   int successCount = 0;
   bool gotAns = false;
   int tempAns;
+  bool working = false;
 
   time_t start_time = time(NULL);
   while (!quit)
   {
-    if (time(NULL) - start_time)
+    if (working)
     {
-      curDigit = rand() % 10;
-      SDL_RenderCopy(renderer, texture[curDigit], NULL, &dstrect);
+      if (!data.used)
+      {
+        tempAns = data.num;
+        data.used = true;
+        if (gotAns)
+        {
+          successCount = 0;
+        }
+        gotAns = true;
+        cout << "get:" << tempAns << endl;
+        if (tempAns == lastDigit)
+        {
+          successCount++;
+        }
+        else
+        {
+          successCount = 0;
+        }
+      }
+      if (time(NULL) - start_time)
+      {
+        if (!gotAns)
+        {
+          successCount = 0;
+        }
+        start_time = time(NULL);
+        curDigit = rand() % 10;
+        SDL_RenderCopy(renderer, texture[curDigit], NULL, &dstrect);
+        if (successCount > 0)
+        {
+          SDL_RenderCopy(renderer, ind_texture, NULL, &ind_location[(successCount - 1) * 2]);
+          SDL_RenderCopy(renderer, ind_texture, NULL, &ind_location[(successCount - 1) * 2 + 1]);
+        }
+        SDL_RenderPresent(renderer);
+        lastDigit = curDigit;
+        gotAns = false;
+        successCount += 1;
+        if (successCount == 6)
+        {
+          SDL_RenderClear(renderer);
+          working = false;
+        }
+      }
+    }
+    else
+    {
+      SDL_RenderDrawRect(renderer, &blocker);
       SDL_RenderPresent(renderer);
-      lastDigit = curDigit;
-      start_time = time(NULL);
-      gotAns = false;
     }
-    if (!data.used)
-    {
-      tempAns = data.num;
-      data.used = true;
-      if (gotAns)
-      {
-        successCount = 0;
-      }
-      gotAns = true;
-	  cout << "get:" << tempAns << endl;
-      if (tempAns == lastDigit)
-      {
-        successCount++;
-      }
-      else
-      {
-        successCount = 0;
-      }
-    }
-    if (successCount == 3)
-      break;
     while (SDL_PollEvent(&event))
       switch (event.type)
       {
@@ -200,6 +244,17 @@ int main(int argc, char **argv)
         case SDL_KEYDOWN:
           switch (event.key.keysym.sym)
           {
+            case SDLK_SPACE:
+              if (working)
+              {
+                SDL_RenderClear(renderer);
+              }
+              else
+              {
+                successCount = 0;
+              }
+              working = !working;
+              break;
             case SDLK_ESCAPE:
               quit = true;
               break;
