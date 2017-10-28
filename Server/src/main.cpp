@@ -128,7 +128,13 @@ int main(int argc, char **argv)
   SDL_Event event;
   SDL_Init(SDL_INIT_VIDEO);
   SDL_DisplayMode DM;
-  SDL_GetCurrentDisplayMode(0, &DM);
+  if (argc != 3)
+    SDL_GetCurrentDisplayMode(0, &DM);
+  else
+  {
+    DM.w = stoi(argv[1]);
+    DM.h = stoi(argv[2]);
+  }
 
   SDL_Window *window = SDL_CreateWindow("My SDL Empty Window",
                                         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1024, 768,
@@ -203,6 +209,7 @@ int main(int argc, char **argv)
         else
         {
           successCount = 0;
+          SDL_RenderClear(renderer);
         }
       }
       if (time(NULL) - start_time)
@@ -210,6 +217,7 @@ int main(int argc, char **argv)
         if (!gotAns)
         {
           successCount = 0;
+          SDL_RenderClear(renderer);
         }
         start_time = time(NULL);
         curDigit = rand() % 10;
@@ -222,8 +230,7 @@ int main(int argc, char **argv)
         SDL_RenderPresent(renderer);
         lastDigit = curDigit;
         gotAns = false;
-        successCount += 1;
-        if (successCount == 6)
+        if (successCount == 5)
         {
           SDL_RenderClear(renderer);
           working = false;

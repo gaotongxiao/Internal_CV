@@ -16,9 +16,9 @@ class Client
   public:
 	Client();
     ~Client();
-    bool config(const string &ip, const int &port);
-    bool c();
-    bool sendAns(int i);
+    bool config(const string &ip, const int &port); //set server ip and port
+    bool c(); //connect to server
+    bool sendAns(int i); //send your answer to server
 
   private:
     int sock;
@@ -26,6 +26,14 @@ class Client
     sockaddr_in serv_addr;
     char str[256];
 };
+
+//////////////////////////////////////////
+//////////////////////////////////////////
+//////////////////////////////////////////
+//You may ignore the implementation of Client and see the sample program below directly
+//////////////////////////////////////////
+//////////////////////////////////////////
+//////////////////////////////////////////
 
 Client::Client()
 {
@@ -48,7 +56,7 @@ bool Client::c()
 {
     if (connect(sock, (sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
 	{
-		cerr << errno <<" connect error.\n";
+		cerr << errno <<" connection error.\n";
 		return false;
 	}
     connected = true;
@@ -79,35 +87,42 @@ Client::~Client()
     close(sock);
 }
 
+//////////////////////////////////////////
+//////////////////////////////////////////
+//////////////////////////////////////////
+//Sample program here
+//////////////////////////////////////////
+//////////////////////////////////////////
+//////////////////////////////////////////
 
-Client test;
+Client client;
 
 void exit_handler(int a)
 {
-	test.~Client();
+	client.~Client();
 	exit(1);
 }
 
 int main(int argc, char* argv[]){
-	signal(SIGINT, exit_handler);
-	if (argc != 3)
+	signal(SIGINT, exit_handler); // exit_handler(int) will be called when ctrl+c is pressed, because we have to make sure destructor of Client will always run when exiting, otherwise next socket connection trial may fail
+	if (argc != 2)
 	{
-		cerr << "Please enter ip and port number.\n";
+		cerr << "Please enter ip address.\n";
 		exit(1);
 	}
-	if (test.config(argv[1], atoi(argv[2])) == false)
+	if (client.config(argv[1], 4331) == false) // our server listens port 4331
 	{
-		cerr << "Invalid ip or port number\n";
+		cerr << "Invalid ip.\n";
 		exit(1);
 	}
-	while (!test.c())sleep(1);
-	cout << "connect success\n";
-    int a;
+	while (!client.c()) sleep(1); // try to connect until success
+	cout << "successfully connect\n";
+    int answer;
 	while(1)
 	{
-		cin >> a;
-		if (a == -1) break;
-		cout << test.sendAns(a) << endl;
+		cin >> answer;
+		if (answer == -1) break;
+		cout << client.sendAns(answer) << endl; //check the status
 	}
     return 0;
 }
