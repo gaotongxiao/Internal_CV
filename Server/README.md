@@ -7,7 +7,7 @@ sudo apt-get install libsdl2-dev
 ```
 Compile & run:
 ```
-g++ src/main.cpp -I /usr/local/include -lSDL2 -lpthread
+g++ src/main.cpp -I /usr/local/include -lSDL2 -lpthread --std=c++11
 ./a.out
 ```
 The including path `/usr/local/include` may vary depending on your computer, you may replace it with installation path of SDL2.
